@@ -9,7 +9,7 @@ class VAO:
         self.vaos = {}
 
         self.vaos[0] = self.get_vao(
-            program=self.program.programs["default"],
+            program=self.program.programs["model"],
             vbo=self.vbo.vbos[0])
     def get_vao(self, program, vbo):
         vao = self.ctx.vertex_array(program, [(vbo.vbo, vbo.format, *vbo.attribs)], vbo.ibo) # vbo_id, buffer format, attributes

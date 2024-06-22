@@ -12,7 +12,7 @@ class Scene:
     def load(self):
         app = self.app
         add = self.add_object
-        #add(Chunk(app, self.map_data, pos=(0, 0, -20)))
+        add(Quad(app))
     def render(self):
         self.environment.render()
         for obj in self.objects:

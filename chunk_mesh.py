@@ -14,14 +14,17 @@ class Chunk:
         self.map_data = map_data
         self.vertex_data, self.index_data = self.get_vertex_data()        
         self.camera = self.app.camera
-
+    def re_init(self):
+        self.vertex_data, self.index_data = self.get_vertex_data() 
+    def pack_data(self, x, y, z, norm_id):
+        return x << 27 | y << 22 | z << 17 | norm_id << 14
     def on_init(self):
         self.initialized = True
         self.vbo = self.ctx.buffer(self.vertex_data)        
         self.ibo = self.ctx.buffer(self.index_data)   
-        
-        self.vao = self.ctx.vertex_array(self.program, [(self.vbo, '3f 3f', *['in_normal', 'in_position'])], self.ibo) # vbo_id, buffer format, attributes
-        
+        self.vao = self.ctx.vertex_array(self.program, [(self.vbo, '1u', *['in_vertinfo'])], self.ibo) # vbo_id, buffer format, attributes
+        #self.vao = self.ctx.vertex_array(self.program, [(self.vbo, '3f 3f', *['in_normal', 'in_position'])], self.ibo) # vbo_id, buffer format, attributes
+
         self.m_model = self.get_model_matrix()
         # mvp
         self.program['m_proj'].write(self.camera.m_proj)        
@@ -68,7 +71,6 @@ class Chunk:
         return False
     def get_vertex_data(self):
         vertices = []
-        normals = []
         indices = []
         for x in range(CHUNK_SIZE):
             for y in range(CHUNK_SIZE):
@@ -79,90 +81,88 @@ class Chunk:
                         # Front face
                         indices.append(tuple(map(lambda i: i + len(vertices),[0,1,2])))
                         indices.append(tuple(map(lambda i: i + len(vertices),[0,2,3])))
-
-                        vertices.append((0 + x, 0 + y, 1 + z))
-                        vertices.append((1 + x, 0 + y, 1 + z))
-                        vertices.append((1 + x, 1 + y, 1 + z))
-                        vertices.append((0 + x, 1 + y, 1 + z))
-
-                        normals.append(( 0, 0, 1))
-                        normals.append(( 0, 0, 1))
-                        normals.append(( 0, 0, 1))
-                        normals.append(( 0, 0, 1))
+                        
+                        vertices.append(self.pack_data(0 + x, 0 + y, 1 + z,0))
+                        vertices.append(self.pack_data(1 + x, 0 + y, 1 + z,0))
+                        vertices.append(self.pack_data(1 + x, 1 + y, 1 + z,0))
+                        vertices.append(self.pack_data(0 + x, 1 + y, 1 + z,0))
+                        # normals.append(( 0, 0, 1))
+                        # normals.append(( 0, 0, 1))
+                        # normals.append(( 0, 0, 1))
+                        # normals.append(( 0, 0, 1))
                     if not self.is_blocked(x,y,z-1):
                         # Back face
                         indices.append(tuple(map(lambda i: i + len(vertices),[0,3,2])))
                         indices.append(tuple(map(lambda i: i + len(vertices),[0,2,1])))
 
-                        vertices.append((0 + x, 1 + y, 0 + z))
-                        vertices.append((0 + x, 0 + y, 0 + z))
-                        vertices.append((1 + x, 0 + y, 0 + z))
-                        vertices.append((1 + x, 1 + y, 0 + z))
+                        vertices.append(self.pack_data(0 + x, 1 + y, 0 + z,1))
+                        vertices.append(self.pack_data(0 + x, 0 + y, 0 + z,1))
+                        vertices.append(self.pack_data(1 + x, 0 + y, 0 + z,1))
+                        vertices.append(self.pack_data(1 + x, 1 + y, 0 + z,1))
 
-                        normals.append(( 0, 0,-1))
-                        normals.append(( 0, 0,-1))
-                        normals.append(( 0, 0,-1))
-                        normals.append(( 0, 0,-1))
+                        # normals.append(( 0, 0,-1))
+                        # normals.append(( 0, 0,-1))
+                        # normals.append(( 0, 0,-1))
+                        # normals.append(( 0, 0,-1))
                     if not self.is_blocked(x-1,y,z):
                         # Left face
                         indices.append(tuple(map(lambda i: i + len(vertices),[3,2,1])))
                         indices.append(tuple(map(lambda i: i + len(vertices),[1,0,3])))
                         
-                        vertices.append((0 + x, 0 + y, 1 + z))
-                        vertices.append((0 + x, 0 + y, 0 + z))
-                        vertices.append((0 + x, 1 + y, 0 + z))
-                        vertices.append((0 + x, 1 + y, 1 + z))
+                        vertices.append(self.pack_data(0 + x, 0 + y, 1 + z,2))
+                        vertices.append(self.pack_data(0 + x, 0 + y, 0 + z,2))
+                        vertices.append(self.pack_data(0 + x, 1 + y, 0 + z,2))
+                        vertices.append(self.pack_data(0 + x, 1 + y, 1 + z,2))
 
-                        normals.append((-1, 0, 0))
-                        normals.append((-1, 0, 0))
-                        normals.append((-1, 0, 0))
-                        normals.append((-1, 0, 0))
+                        # normals.append((-1, 0, 0))
+                        # normals.append((-1, 0, 0))
+                        # normals.append((-1, 0, 0))
+                        # normals.append((-1, 0, 0))
                     if not self.is_blocked(x+1,y,z):
                         # Right face
                         indices.append(tuple(map(lambda i: i + len(vertices),[3,1,0])))
                         indices.append(tuple(map(lambda i: i + len(vertices),[2,3,0])))
                         
-                        vertices.append((1 + x, 0 + y, 1 + z))
-                        vertices.append((1 + x, 1 + y, 1 + z))
-                        vertices.append((1 + x, 0 + y, 0 + z))
-                        vertices.append((1 + x, 1 + y, 0 + z))
+                        vertices.append(self.pack_data(1 + x, 0 + y, 1 + z,3))
+                        vertices.append(self.pack_data(1 + x, 1 + y, 1 + z,3))
+                        vertices.append(self.pack_data(1 + x, 0 + y, 0 + z,3))
+                        vertices.append(self.pack_data(1 + x, 1 + y, 0 + z,3))
 
-                        normals.append(( 1, 0, 0))
-                        normals.append(( 1, 0, 0))
-                        normals.append(( 1, 0, 0))
-                        normals.append(( 1, 0, 0))
+                  
+                        # normals.append(( 1, 0, 0))
+                        # normals.append(( 1, 0, 0))
+                        # normals.append(( 1, 0, 0))
+                        # normals.append(( 1, 0, 0))
                     if not self.is_blocked(x,y+1,z):
                         # Top face
                         indices.append(tuple(map(lambda i: i + len(vertices),[0,2,1])))
                         indices.append(tuple(map(lambda i: i + len(vertices),[0,3,2])))
                         
-                        vertices.append((1 + x, 1 + y, 1 + z))
-                        vertices.append((0 + x, 1 + y, 1 + z))
-                        vertices.append((0 + x, 1 + y, 0 + z))
-                        vertices.append((1 + x, 1 + y, 0 + z))
+                        vertices.append(self.pack_data(1 + x, 1 + y, 1 + z,4))
+                        vertices.append(self.pack_data(0 + x, 1 + y, 1 + z,4))
+                        vertices.append(self.pack_data(0 + x, 1 + y, 0 + z,4))
+                        vertices.append(self.pack_data(1 + x, 1 + y, 0 + z,4))
 
-                        normals.append(( 0, 1, 0))
-                        normals.append(( 0, 1, 0))
-                        normals.append(( 0, 1, 0))
-                        normals.append(( 0, 1, 0))
+                       
+                        # normals.append(( 0, 1, 0))
+                        # normals.append(( 0, 1, 0))
+                        # normals.append(( 0, 1, 0))
+                        # normals.append(( 0, 1, 0))
                     if not self.is_blocked(x,y-1,z):
                         # Bottom face
                         indices.append(tuple(map(lambda i: i + len(vertices),[1,0,2])))
                         indices.append(tuple(map(lambda i: i + len(vertices),[2,3,1])))
                         
-                        vertices.append((0 + x, 0 + y, 1 + z))
-                        vertices.append((1 + x, 0 + y, 1 + z))
-                        vertices.append((0 + x, 0 + y, 0 + z))
-                        vertices.append((1 + x, 0 + y, 0 + z))
+                        vertices.append(self.pack_data(0 + x, 0 + y, 1 + z,5))
+                        vertices.append(self.pack_data(1 + x, 0 + y, 1 + z,5))
+                        vertices.append(self.pack_data(0 + x, 0 + y, 0 + z,5))
+                        vertices.append(self.pack_data(1 + x, 0 + y, 0 + z,5))
 
-                        normals.append(( 0, -1, 0))
-                        normals.append(( 0, -1, 0))
-                        normals.append(( 0, -1, 0))
-                        normals.append(( 0, -1, 0))
-
-        vertices = np.array(vertices, dtype="f4")
-        normals = np.array(normals, dtype='f4')
-        vertices = np.hstack([normals, vertices])
-
+                     
+                        # normals.append(( 0, -1, 0))
+                        # normals.append(( 0, -1, 0))
+                        # normals.append(( 0, -1, 0))
+                        # normals.append(( 0, -1, 0))
+        vertices = np.array(vertices, dtype="uint32")
         indices = np.array(indices, dtype='i4').flatten()
         return (vertices, indices)

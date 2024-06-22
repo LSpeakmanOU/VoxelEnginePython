@@ -25,3 +25,24 @@ class BaseModel:
     def render(self):
         self.update()
         self.vao.render()
+class Quad(BaseModel):
+    def __init__(self, app, vao_name=0, pos=(0,16,0), rot=(0,0,0), scale=(1,1,1)):
+        super().__init__(app, vao_name, pos, rot, scale)
+        self.on_init()
+    def on_init(self):
+        # mvp
+        self.program['m_proj'].write(self.camera.m_proj)        
+        self.program['m_view'].write(self.camera.m_view)
+        self.program['m_model'].write(self.m_model)
+        # lights
+        self.program['light.position'].write(self.app.light.position)        
+        self.program['light.Ia'].write(self.app.light.Ia)        
+        self.program['light.Id'].write(self.app.light.Id)
+        self.program['light.Is'].write(self.app.light.Is)
+    def update(self):
+        ray = self.app.camera.mouse_ray
+        self.pos = self.app.camera.position + ray*8
+        self.m_model = self.get_model_matrix()
+        self.program['camPos'].write(self.camera.position)
+        self.program['m_view'].write(self.camera.m_view)
+        self.program['m_model'].write(self.m_model)

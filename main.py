@@ -5,8 +5,10 @@ from camera import Camera
 from light import Light
 from mesh import Mesh
 from scene import Scene
+WINDOW_WIDTH = 1600
+WINDOW_HEIGHT = 900
 class GraphicsEngine:
-    def __init__(self, win_size=(1600, 900)):
+    def __init__(self, win_size=(WINDOW_WIDTH, WINDOW_HEIGHT)):
         pg.init()
         self.WIN_SIZE = win_size
         # Set opengl attributes
