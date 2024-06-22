@@ -38,6 +38,8 @@ class GraphicsEngine:
         self.scene = Scene(self)
     def check_events(self):
         for event in pg.event.get():
+            if event.type == pg.MOUSEBUTTONUP:
+                self.scene.on_mouse_button_up(event)
             if event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE):
                 self.mesh.destroy()
                 pg.quit()

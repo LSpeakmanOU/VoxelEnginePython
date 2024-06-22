@@ -17,3 +17,5 @@ class Scene:
         self.environment.render()
         for obj in self.objects:
             obj.render()
+    def on_mouse_button_up(self, event):
+        self.environment.change_terrain(event)

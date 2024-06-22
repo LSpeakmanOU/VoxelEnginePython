@@ -1,6 +1,7 @@
 import numpy as np
 import moderngl as mgl
 import glm
+import random
 CHUNK_SIZE = 16
 class Chunk:
     def __init__(self, app, program, map_data, pos=(0,0,0), rot=(0,0,0), scale=(1,1,1)):
@@ -16,25 +17,26 @@ class Chunk:
         self.camera = self.app.camera
     def re_init(self):
         self.vertex_data, self.index_data = self.get_vertex_data() 
-    def pack_data(self, x, y, z, norm_id):
-        return x << 27 | y << 22 | z << 17 | norm_id << 14
+        
     def on_init(self):
-        self.initialized = True
-        self.vbo = self.ctx.buffer(self.vertex_data)        
-        self.ibo = self.ctx.buffer(self.index_data)   
-        self.vao = self.ctx.vertex_array(self.program, [(self.vbo, '1u', *['in_vertinfo'])], self.ibo) # vbo_id, buffer format, attributes
-        #self.vao = self.ctx.vertex_array(self.program, [(self.vbo, '3f 3f', *['in_normal', 'in_position'])], self.ibo) # vbo_id, buffer format, attributes
+        if not self.initialized:
+            self.initialized = True
+            self.vbo = self.ctx.buffer(self.vertex_data, dynamic=True)        
+            self.ibo = self.ctx.buffer(self.index_data, dynamic=True)   
+            self.vao = self.ctx.vertex_array(self.program, [(self.vbo, '1u 1u', *['in_vertinfo', 'in_color'])], self.ibo) # vbo_id, buffer format, attributes
 
-        self.m_model = self.get_model_matrix()
-        # mvp
-        self.program['m_proj'].write(self.camera.m_proj)        
-        self.program['m_view'].write(self.camera.m_view)
-        self.program['m_model'].write(self.m_model)
-        # lights
-        self.program['light.position'].write(self.app.light.position)        
-        self.program['light.Ia'].write(self.app.light.Ia)        
-        self.program['light.Id'].write(self.app.light.Id)
-        self.program['light.Is'].write(self.app.light.Is)
+            self.m_model = self.get_model_matrix()
+            # mvp
+            self.program['m_proj'].write(self.camera.m_proj)        
+            self.program['m_view'].write(self.camera.m_view)
+            self.program['m_model'].write(self.m_model)
+        else:
+            self.vbo.release()
+            self.ibo.release()
+            self.vbo = self.ctx.buffer(self.vertex_data, dynamic=True)        
+            self.ibo = self.ctx.buffer(self.index_data, dynamic=True)   
+            self.vao = self.ctx.vertex_array(self.program, [(self.vbo, '1u 1u', *['in_vertinfo', 'in_color'])], self.ibo) # vbo_id, buffer format, attributes
+
     def destroy(self):
         self.vbo.release()
         self.ibo.release()
@@ -46,19 +48,14 @@ class Chunk:
     def get_model_matrix(self):
         m_model = glm.mat4()
         m_model = glm.translate(m_model, self.pos)
-        #m_model = glm.rotate(m_model, self.rot.x, glm.vec3(1,0,0))
-        #m_model = glm.rotate(m_model, self.rot.y, glm.vec3(0,1,0))
-        #m_model = glm.rotate(m_model, self.rot.z, glm.vec3(0,0,1))
-        #m_model = glm.scale(m_model, self.scale)
         return m_model
     def render(self):
         self.update()
         self.vao.render()
     def update(self):
-        self.program['camPos'].write(self.camera.position)
         self.program['m_view'].write(self.camera.m_view)
         self.program['m_model'].write(self.m_model)
-    
+        self.program['light_dir'].write(self.app.scene.environment.sun)
     def is_blocked(self,x,y,z):
         if x < 0 or x > CHUNK_SIZE-1:
             return False
@@ -69,100 +66,71 @@ class Chunk:
         if self.map_data[x][y][z] == 1:
             return True
         return False
+   
+    def add_face(self, v_list, norm_id, v_idx, c_list, color, *positions):
+        for pos in positions:
+            v_list[v_idx] = pos[0] << 27 | pos[1] << 22 | pos[2] << 17 | norm_id << 14
+            c_list[v_idx] = color
+            v_idx = v_idx + 1
+        return v_idx
     def get_vertex_data(self):
-        vertices = []
+        vertices = np.empty(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE * 24, dtype='uint32')
+        v_idx = 0
+        colors = np.empty(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE * 24, dtype='uint32')
         indices = []
         for x in range(CHUNK_SIZE):
             for y in range(CHUNK_SIZE):
                 for z in range(CHUNK_SIZE):
+                    color = random.randint(0, 0XFFFFFFFF)
                     if self.map_data[x][y][z] == 0:
                         continue
+                    v0 = (0 + x, 0 + y, 1 + z)
+                    v1 = (1 + x, 0 + y, 1 + z)
+                    v2 = (1 + x, 1 + y, 1 + z)
+                    v3 = (0 + x, 1 + y, 1 + z)
+
+                    v4 = (0 + x, 0 + y, 0 + z)
+                    v5 = (1 + x, 0 + y, 0 + z)
+                    v6 = (1 + x, 1 + y, 0 + z)
+                    v7 = (0 + x, 1 + y, 0 + z)
+                    
                     if not self.is_blocked(x,y,z+1):
                         # Front face
-                        indices.append(tuple(map(lambda i: i + len(vertices),[0,1,2])))
-                        indices.append(tuple(map(lambda i: i + len(vertices),[0,2,3])))
+                        indices.extend([0 + v_idx,1 + v_idx,2 + v_idx])
+                        indices.extend([0 + v_idx,2 + v_idx,3 + v_idx])
                         
-                        vertices.append(self.pack_data(0 + x, 0 + y, 1 + z,0))
-                        vertices.append(self.pack_data(1 + x, 0 + y, 1 + z,0))
-                        vertices.append(self.pack_data(1 + x, 1 + y, 1 + z,0))
-                        vertices.append(self.pack_data(0 + x, 1 + y, 1 + z,0))
-                        # normals.append(( 0, 0, 1))
-                        # normals.append(( 0, 0, 1))
-                        # normals.append(( 0, 0, 1))
-                        # normals.append(( 0, 0, 1))
+                        v_idx = self.add_face(vertices,0,v_idx,colors,color,v0,v1,v2,v3)
                     if not self.is_blocked(x,y,z-1):
                         # Back face
-                        indices.append(tuple(map(lambda i: i + len(vertices),[0,3,2])))
-                        indices.append(tuple(map(lambda i: i + len(vertices),[0,2,1])))
+                        indices.extend([0 + v_idx,3 + v_idx,2 + v_idx])
+                        indices.extend([0 + v_idx,2 + v_idx,1 + v_idx])
 
-                        vertices.append(self.pack_data(0 + x, 1 + y, 0 + z,1))
-                        vertices.append(self.pack_data(0 + x, 0 + y, 0 + z,1))
-                        vertices.append(self.pack_data(1 + x, 0 + y, 0 + z,1))
-                        vertices.append(self.pack_data(1 + x, 1 + y, 0 + z,1))
-
-                        # normals.append(( 0, 0,-1))
-                        # normals.append(( 0, 0,-1))
-                        # normals.append(( 0, 0,-1))
-                        # normals.append(( 0, 0,-1))
+                        v_idx = self.add_face(vertices,1,v_idx,colors,color,v7,v4,v5,v6)
                     if not self.is_blocked(x-1,y,z):
                         # Left face
-                        indices.append(tuple(map(lambda i: i + len(vertices),[3,2,1])))
-                        indices.append(tuple(map(lambda i: i + len(vertices),[1,0,3])))
+                        indices.extend([3 + v_idx,2 + v_idx,1 + v_idx])
+                        indices.extend([1 + v_idx,0 + v_idx,3 + v_idx])
                         
-                        vertices.append(self.pack_data(0 + x, 0 + y, 1 + z,2))
-                        vertices.append(self.pack_data(0 + x, 0 + y, 0 + z,2))
-                        vertices.append(self.pack_data(0 + x, 1 + y, 0 + z,2))
-                        vertices.append(self.pack_data(0 + x, 1 + y, 1 + z,2))
-
-                        # normals.append((-1, 0, 0))
-                        # normals.append((-1, 0, 0))
-                        # normals.append((-1, 0, 0))
-                        # normals.append((-1, 0, 0))
+                        v_idx = self.add_face(vertices,2,v_idx,colors,color,v0,v4,v7,v3)
                     if not self.is_blocked(x+1,y,z):
                         # Right face
-                        indices.append(tuple(map(lambda i: i + len(vertices),[3,1,0])))
-                        indices.append(tuple(map(lambda i: i + len(vertices),[2,3,0])))
+                        indices.extend([3 + v_idx,1 + v_idx,0 + v_idx])
+                        indices.extend([2 + v_idx,3 + v_idx,0 + v_idx])
                         
-                        vertices.append(self.pack_data(1 + x, 0 + y, 1 + z,3))
-                        vertices.append(self.pack_data(1 + x, 1 + y, 1 + z,3))
-                        vertices.append(self.pack_data(1 + x, 0 + y, 0 + z,3))
-                        vertices.append(self.pack_data(1 + x, 1 + y, 0 + z,3))
-
-                  
-                        # normals.append(( 1, 0, 0))
-                        # normals.append(( 1, 0, 0))
-                        # normals.append(( 1, 0, 0))
-                        # normals.append(( 1, 0, 0))
+                        v_idx = self.add_face(vertices,3,v_idx,colors,color,v1,v2,v5,v6)
                     if not self.is_blocked(x,y+1,z):
                         # Top face
-                        indices.append(tuple(map(lambda i: i + len(vertices),[0,2,1])))
-                        indices.append(tuple(map(lambda i: i + len(vertices),[0,3,2])))
+                        indices.extend([0 + v_idx,2 + v_idx,1 + v_idx])
+                        indices.extend([0 + v_idx,3 + v_idx,2 + v_idx])
                         
-                        vertices.append(self.pack_data(1 + x, 1 + y, 1 + z,4))
-                        vertices.append(self.pack_data(0 + x, 1 + y, 1 + z,4))
-                        vertices.append(self.pack_data(0 + x, 1 + y, 0 + z,4))
-                        vertices.append(self.pack_data(1 + x, 1 + y, 0 + z,4))
-
-                       
-                        # normals.append(( 0, 1, 0))
-                        # normals.append(( 0, 1, 0))
-                        # normals.append(( 0, 1, 0))
-                        # normals.append(( 0, 1, 0))
+                        v_idx = self.add_face(vertices,4,v_idx,colors,color,v2,v3,v7,v6)
                     if not self.is_blocked(x,y-1,z):
                         # Bottom face
-                        indices.append(tuple(map(lambda i: i + len(vertices),[1,0,2])))
-                        indices.append(tuple(map(lambda i: i + len(vertices),[2,3,1])))
+                        indices.extend([1 + v_idx,0 + v_idx,2 + v_idx])
+                        indices.extend([2 + v_idx,3 + v_idx,1 + v_idx])
                         
-                        vertices.append(self.pack_data(0 + x, 0 + y, 1 + z,5))
-                        vertices.append(self.pack_data(1 + x, 0 + y, 1 + z,5))
-                        vertices.append(self.pack_data(0 + x, 0 + y, 0 + z,5))
-                        vertices.append(self.pack_data(1 + x, 0 + y, 0 + z,5))
-
-                     
-                        # normals.append(( 0, -1, 0))
-                        # normals.append(( 0, -1, 0))
-                        # normals.append(( 0, -1, 0))
-                        # normals.append(( 0, -1, 0))
-        vertices = np.array(vertices, dtype="uint32")
-        indices = np.array(indices, dtype='i4').flatten()
+                        v_idx = self.add_face(vertices,5,v_idx,colors,color,v0,v1,v4,v5)
+        #colors = np.array(colors, dtype="uint32")
+        vertices = np.hstack( list(zip(vertices[:v_idx],colors)) )
+        indices = np.array(indices, dtype='i4')
         return (vertices, indices)
