@@ -46,6 +46,7 @@ class GraphicsEngine:
                 sys.exit()
     
     def render(self):
+        pg.display.set_caption(f'{self.clock.get_fps() :.0f}')
         self.ctx.clear(color=(0.08, 0.16, 0.18))
         self.scene.render()
         pg.display.flip()
@@ -57,8 +58,7 @@ class GraphicsEngine:
             self.check_events()
             self.camera.update()
             self.render()
-            self.delta_time = self.clock.tick(60)
-
+            self.delta_time = self.clock.tick()
 if __name__ == "__main__":
     app = GraphicsEngine()
     app.run()
