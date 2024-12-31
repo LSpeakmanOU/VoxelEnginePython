@@ -5,8 +5,10 @@ from camera import Camera
 from light import Light
 from mesh import Mesh
 from scene import Scene
+WINDOW_WIDTH = 1600
+WINDOW_HEIGHT = 900
 class GraphicsEngine:
-    def __init__(self, win_size=(1600, 900)):
+    def __init__(self, win_size=(WINDOW_WIDTH, WINDOW_HEIGHT)):
         pg.init()
         self.WIN_SIZE = win_size
         # Set opengl attributes
@@ -36,12 +38,15 @@ class GraphicsEngine:
         self.scene = Scene(self)
     def check_events(self):
         for event in pg.event.get():
+            if event.type == pg.MOUSEBUTTONUP:
+                self.scene.on_mouse_button_up(event)
             if event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE):
                 self.mesh.destroy()
                 pg.quit()
                 sys.exit()
     
     def render(self):
+        pg.display.set_caption(f'{self.clock.get_fps() :.0f}')
         self.ctx.clear(color=(0.08, 0.16, 0.18))
         self.scene.render()
         pg.display.flip()
@@ -53,8 +58,7 @@ class GraphicsEngine:
             self.check_events()
             self.camera.update()
             self.render()
-            self.delta_time = self.clock.tick(60)
-
+            self.delta_time = self.clock.tick()
 if __name__ == "__main__":
     app = GraphicsEngine()
     app.run()
